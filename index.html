@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>ASCII ⇄ HEX · 互转台</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg1: #c9c7c2; --bg2: #bcbab5;
+    --panel: #d4d2cd; --panel2: #c9c7c2;
+    --seam: rgba(40, 38, 34, .13);
+    --line: rgba(40, 38, 34, .24);
+    --ink: #33312c; --ink2: #56544e; --ink3: #7c7a74;
+    --rust: #8f4a38;
+    --hl: rgba(255, 255, 255, .5);
+    --sans: "Segoe UI", "Microsoft YaHei", sans-serif;
+    --mono: Consolas, "Cascadia Mono", ui-monospace, monospace;
+    --serif: Georgia, "Times New Roman", "SimSun", serif;
+  }
+  html { height: 100%; }
+  body {
+    min-height: 100vh;
+    font-family: var(--sans);
+    color: var(--ink);
+    padding: 26px clamp(14px, 4vw, 48px) 56px;
+    background:
+      radial-gradient(circle 5px at 0 0,
+        #7d7b75 0px, #75736d 2.2px,
+        rgba(255,255,255,.42) 2.8px, rgba(255,255,255,0) 3.8px),
+      repeating-linear-gradient(0deg,  transparent 0 358px, var(--seam) 358px 360px),
+      repeating-linear-gradient(90deg, transparent 0 358px, var(--seam) 358px 360px),
+      linear-gradient(163deg, #cac8c3 0%, #c3c1bc 55%, #bcbab5 100%);
+    background-size: 360px 360px, auto, auto, auto;
+  }
+  /* 混凝土颗粒 */
+  body::after {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 50;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: .28;
+    mix-blend-mode: soft-light;
+  }
+  ::selection { background: rgba(143, 74, 56, .28); }
+
+  .sheet { max-width: 1280px; margin: 0 auto; }
+
+  /* ── 页眉 ─────────────────────────── */
+  .brand {
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    font: 600 10px/1 var(--mono); letter-spacing: .28em; color: var(--ink3);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 12px; margin-bottom: 24px;
+    text-shadow: 0 1px 0 var(--hl);
+  }
+  .title-row {
+    display: flex; align-items: flex-end; gap: 26px; flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 600;
+    font-size: clamp(34px, 5vw, 54px);
+    letter-spacing: .05em; color: #46443f;
+    text-shadow: 0 1px 0 rgba(255,255,255,.55), 0 -1px 1px rgba(0,0,0,.12);
+  }
+  h1 .swap-glyph { color: var(--rust); opacity: .8; }
+  .sub {
+    font-size: 12px; line-height: 1.7; letter-spacing: .14em;
+    color: var(--ink2); padding-bottom: 7px;
+  }
+  .sub em {
+    font-style: normal; display: block;
+    font-family: var(--mono); font-size: 9px; letter-spacing: .32em;
+    color: var(--ink3);
+  }
+  .stamp {
+    margin-left: auto; align-self: flex-start;
+    width: 46px; height: 46px; display: grid; place-items: center;
+    border: 2px solid rgba(143, 74, 56, .7); border-radius: 4px;
+    color: rgba(143, 74, 56, .8);
+    font-family: var(--serif); font-size: 22px; font-weight: 700;
+    transform: rotate(-7deg);
+    box-shadow: inset 0 0 0 1px rgba(143, 74, 56, .25);
+    user-select: none;
+  }
+
+  /* ── 主体网格 ─────────────────────── */
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 176px minmax(0, 1fr);
+    gap: 20px; align-items: stretch;
+  }
+
+  .panel {
+    position: relative;
+    display: flex; flex-direction: column;
+    height: clamp(400px, 58vh, 680px);
+    background: linear-gradient(178deg, var(--panel), var(--panel2));
+    border: 1px solid var(--line);
+    box-shadow:
+      inset 0 1px 0 var(--hl),
+      inset 0 -1px 0 rgba(0,0,0,.06),
+      0 18px 34px -26px rgba(0,0,0,.55);
+  }
+  /* 对拉螺栓孔 */
+  .panel::before, .panel::after {
+    content: ""; position: absolute; top: 9px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #b2b0ab;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.5), inset 0 -1px 1px rgba(255,255,255,.35), 0 1px 0 var(--hl);
+    z-index: 2;
+  }
+  .panel::before { left: 9px; }
+  .panel::after  { right: 9px; }
+  .panel.drag { outline: 2px dashed var(--rust); outline-offset: -7px; }
+
+  .p-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; border-bottom: 1px solid var(--line);
+  }
+  .p-index {
+    font: 700 13px var(--mono); color: var(--ink);
+    width: 26px; height: 26px; display: grid; place-items: center;
+    border: 1px solid var(--ink3); border-radius: 2px;
+    box-shadow: inset 0 1px 0 var(--hl), 0 1px 2px rgba(0,0,0,.15);
+    background: linear-gradient(#dcdad5, #cbc9c4);
+  }
+  .p-name { flex: 1; font-size: 13px; letter-spacing: .08em; color: var(--ink2); }
+  .p-meta { font: 11px var(--mono); color: var(--ink3); letter-spacing: .04em; }
+  .p-actions { display: flex; gap: 6px; }
+
+  textarea {
+    flex: 1; width: 100%; resize: none; border: 0; outline: 0;
+    padding: 14px 16px;
+    background: rgba(0,0,0,.05);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.16), inset 0 -1px 0 rgba(255,255,255,.28);
+    font: 13px/1.75 var(--mono);
+    color: #2c2b27; caret-color: var(--rust);
+  }
+  #hex { white-space: pre; overflow: auto; }
+  textarea::placeholder { color: #918f89; }
+  textarea:focus {
+    box-shadow:
+      inset 0 2px 8px rgba(0,0,0,.2),
+      inset 0 0 0 1px rgba(143,74,56,.4),
+      inset 0 -1px 0 rgba(255,255,255,.28);
+  }
+  textarea::-webkit-scrollbar { width: 10px; height: 10px; }
+  textarea::-webkit-scrollbar-track { background: rgba(0,0,0,.05); }
+  textarea::-webkit-scrollbar-thumb {
+    background: #a5a39e; border: 2px solid rgba(0,0,0,.04); border-radius: 5px;
+  }
+
+  .p-foot {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    padding: 11px 12px; border-top: 1px solid var(--line);
+  }
+
+  /* ── 按钮 ─────────────────────────── */
+  .btn {
+    font: 600 11px/1 var(--mono); letter-spacing: .08em;
+    color: #3c3a35; padding: 8px 12px;
+    background: linear-gradient(#dad8d3, #c7c5c0);
+    border: 1px solid rgba(40,38,34,.3); border-radius: 2px;
+    cursor: pointer; user-select: none;
+    box-shadow: inset 0 1px 0 var(--hl), 0 2px 3px rgba(0,0,0,.16);
+    transition: background .12s, transform .06s;
+  }
+  .btn:hover  { background: linear-gradient(#e1dfda, #cdcbc6); }
+  .btn:active { transform: translateY(1px); box-shadow: inset 0 2px 5px rgba(0,0,0,.22); }
+  .btn:focus-visible { outline: 1px dashed var(--rust); outline-offset: 2px; }
+  .btn.mini { padding: 4px 8px; font-size: 10px; }
+  .btn.dark {
+    background: linear-gradient(#5b5954, #494742);
+    color: #e9e7e2; border-color: rgba(0,0,0,.42);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 2px 3px rgba(0,0,0,.25);
+    text-shadow: 0 -1px 0 rgba(0,0,0,.4);
+  }
+  .btn.dark:hover { background: linear-gradient(#656360, #504e49); }
+
+  /* ── 中央控制 ─────────────────────── */
+  .center {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: 20px 12px;
+    background: linear-gradient(178deg, rgba(255,255,255,.16), rgba(0,0,0,.05));
+    border: 1px solid var(--line);
+    box-shadow: inset 0 1px 0 var(--hl);
+  }
+  .glyph {
+    font-size: 42px; line-height: 1; color: #4a4844; user-select: none;
+    text-shadow: 0 1px 0 rgba(255,255,255,.5), 0 -1px 1px rgba(0,0,0,.15);
+  }
+  .opts { display: flex; flex-direction: column; gap: 12px; width: 100%; margin-top: 6px; }
+  .opts label {
+    display: flex; flex-direction: column; gap: 5px;
+    font: 600 9px var(--mono); letter-spacing: .22em; color: var(--ink3);
+  }
+  select {
+    width: 100%; font: 12px var(--mono); padding: 7px 8px;
+    color: var(--ink); background: #cfcdc8;
+    border: 1px solid rgba(40,38,34,.3); border-radius: 2px; outline: 0; cursor: pointer;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.15), 0 1px 0 var(--hl);
+  }
+  .note {
+    margin-top: auto; width: 100%;
+    padding-top: 14px; border-top: 1px dashed var(--line);
+    font: 10px/2 var(--mono); letter-spacing: .06em;
+    color: var(--ink3); text-align: center;
+  }
+
+  /* ── 状态条 ───────────────────────── */
+  .status {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 16px; flex-wrap: wrap;
+    margin-top: 20px; padding: 11px 16px;
+    background: linear-gradient(#b4b2ad, #a9a7a2);
+    border: 1px solid rgba(40,38,34,.3);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 3px rgba(0,0,0,.12);
+    font: 11px var(--mono); color: #3f3d38; letter-spacing: .05em;
+  }
+  .status-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .fname { display: flex; align-items: center; gap: 8px; letter-spacing: .1em; }
+  .fname input {
+    width: 130px; font: 11px var(--mono); padding: 6px 8px;
+    color: var(--ink); background: #c1bfb9;
+    border: 1px solid rgba(40,38,34,.3); outline: 0;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.18);
+  }
+  #msg.ok   { color: #46543f; }
+  #msg.warn { color: #84652c; }
+  #msg.err  { color: var(--rust); }
+
+  /* ── 速查表 ───────────────────────── */
+  .ref {
+    margin-top: 22px;
+    background: linear-gradient(178deg, var(--panel), var(--panel2));
+    border: 1px solid var(--line);
+    box-shadow: inset 0 1px 0 var(--hl), 0 14px 28px -26px rgba(0,0,0,.5);
+  }
+  .ref summary {
+    cursor: pointer; user-select: none; list-style: none;
+    padding: 13px 16px;
+    font: 600 11px var(--mono); letter-spacing: .24em; color: var(--ink2);
+    text-shadow: 0 1px 0 var(--hl);
+  }
+  .ref summary::-webkit-details-marker { display: none; }
+  .ref summary::before { content: "＋ "; color: var(--rust); }
+  .ref[open] summary::before { content: "－ "; }
+  .ref-body { padding: 2px 16px 18px; }
+  .ref-cap { font: 10px var(--mono); color: var(--ink3); letter-spacing: .1em; margin-bottom: 12px; }
+  #refGrid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+    gap: 6px;
+  }
+  .cell {
+    padding: 6px 4px; text-align: center; border-radius: 2px;
+    background: rgba(0,0,0,.045);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.14), 0 1px 0 var(--hl);
+    font-family: var(--mono);
+  }
+  .cell .c { display: block; font-size: 14px; color: var(--ink); }
+  .cell .n { display: block; margin-top: 2px; font-size: 9px; color: var(--ink3); }
+
+  /* ── 响应式 ───────────────────────── */
+  @media (max-width: 940px) {
+    main { grid-template-columns: 1fr; }
+    .center {
+      height: auto; flex-direction: row; flex-wrap: wrap;
+      justify-content: center; padding: 14px;
+    }
+    .glyph, .note { display: none; }
+    .opts { flex-direction: row; margin: 0; flex: 1; min-width: 220px; }
+    .opts label { flex: 1; }
+    .panel { height: clamp(300px, 44vh, 520px); }
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header>
+    <div class="brand">
+      <span>ATELIER TOOLS · №03 CONVERSION BENCH</span>
+      <span>FAIR-FACED CONCRETE · SCALE 1:1</span>
+    </div>
+    <div class="title-row">
+      <h1>ASCII <span class="swap-glyph">⇄</span> HEX</h1>
+      <div class="sub">码值互换台 · 清水混凝土<em>BÉTON BRUT EDITION</em></div>
+      <div class="stamp" aria-hidden="true">换</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- A · 文本 -->
+    <section class="panel" id="panelA">
+      <div class="p-head">
+        <span class="p-index">A</span>
+        <span class="p-name">文本 · ASCII / UTF-8</span>
+        <span class="p-meta" id="metaA">0 字符 · 0 字节</span>
+        <span class="p-actions">
+          <button class="btn mini" id="copyA" title="复制文本">复制</button>
+          <button class="btn mini" id="clearA" title="清空文本">清空</button>
+        </span>
+      </div>
+      <textarea id="ascii" spellcheck="false" placeholder="输入文本…"></textarea>
+      <div class="p-foot">
+        <button class="btn" id="impText">导入文件 → 字节</button>
+        <button class="btn dark" id="expTxt">导出 .txt</button>
+        <input type="file" id="fileA" hidden>
+      </div>
+    </section>
+
+    <!-- 中央控制 -->
+    <aside class="center">
+      <div class="glyph" aria-hidden="true">⇄</div>
+      <button class="btn dark" id="swapBtn" title="交换两侧内容">交换 ⇄</button>
+      <div class="opts">
+        <label>HEX 分隔符
+          <select id="sep">
+            <option value="sp" selected>空格</option>
+            <option value="none">无</option>
+            <option value="colon">冒号 :</option>
+            <option value="comma">逗号 ,</option>
+            <option value="nl">换行</option>
+          </select>
+        </label>
+        <label>十六进制字形
+          <select id="caseSel">
+            <option value="upper" selected>大写 A–F</option>
+            <option value="lower">小写 a–f</option>
+          </select>
+        </label>
+      </div>
+      <div class="note">双向实时转换<br>HEX 输入兼容 0x 前缀<br>与空格 / 冒号 / 逗号</div>
+    </aside>
+
+    <!-- B · HEX -->
+    <section class="panel" id="panelB">
+      <div class="p-head">
+        <span class="p-index">B</span>
+        <span class="p-name">十六进制 · HEX</span>
+        <span class="p-meta" id="metaB">0 字节</span>
+        <span class="p-actions">
+          <button class="btn mini" id="copyB" title="复制 HEX">复制</button>
+          <button class="btn mini" id="clearB" title="清空 HEX">清空</button>
+        </span>
+      </div>
+      <textarea id="hex" spellcheck="false" wrap="off" placeholder="粘贴 HEX，如 48 65 6C 6C 6F…"></textarea>
+      <div class="p-foot">
+        <button class="btn" id="impHex">导入 HEX 文本</button>
+        <button class="btn dark" id="expHex">导出 .hex</button>
+        <button class="btn dark" id="expBin">导出 .bin</button>
+        <input type="file" id="fileH" hidden>
+      </div>
+    </section>
+  </main>
+
+  <footer class="status">
+    <span id="counters">A: 0 字符 / 0 字节 · B: 0 字节</span>
+    <span class="status-right">
+      <label class="fname">文件名
+        <input id="fname" value="output" spellcheck="false">
+      </label>
+      <span id="msg" class="ok">就绪 · 双向实时转换</span>
+    </span>
+  </footer>
+
+  <details class="ref">
+    <summary>ASCII 速查表 · DEC 32–126</summary>
+    <div class="ref-body">
+      <div class="ref-cap">十进制编码 · 32=空格 · 127 以上不属于标准 ASCII</div>
+      <div id="refGrid"></div>
+    </div>
+  </details>
+
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = s => document.querySelector(s);
+  const asciiEl = $('#ascii'), hexEl = $('#hex');
+  const metaA = $('#metaA'), metaB = $('#metaB');
+  const counters = $('#counters'), msg = $('#msg');
+
+  const enc = new TextEncoder();
+  const dec = new TextDecoder('utf-8');
+  const decStrict = new TextDecoder('utf-8', { fatal: true });
+
+  const SEP_MAP = { sp: ' ', none: '', colon: ':', comma: ',', nl: '\n' };
+  let sepChar = ' ';
+  let upper = true;
+  const MAX_BYTES = 256 * 1024;
+
+  /* ── 核心转换 ── */
+  const fmt = bytes => {
+    let s = '';
+    const parts = Array.from(bytes, b => b.toString(16).padStart(2, '0'));
+    s = parts.join(sepChar);
+    return upper ? s.toUpperCase() : s.toLowerCase();
+  };
+
+  function parseHex(str) {
+    const noPrefix = str.replace(/0[xX]/g, '');
+    const noWs = noPrefix.replace(/\s+/g, '');
+    const clean = noWs.replace(/[^0-9a-fA-F]/g, '');
+    const invalid = noWs.length - clean.length;
+    const odd = clean.length % 2 === 1;
+    const n = (clean.length - (odd ? 1 : 0)) / 2;
+    const bytes = new Uint8Array(n);
+    for (let i = 0; i < n; i++) bytes[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+    return { bytes, invalid, odd, empty: clean.length === 0 };
+  }
+
+  const setText = (t, cls) => { msg.textContent = t; msg.className = cls || 'ok'; };
+
+  function updateMeta() {
+    const a = asciiEl.value;
+    const chars = [...a].length;
+    const aBytes = enc.encode(a).length;
+    const r = parseHex(hexEl.value);
+    metaA.textContent = `${chars} 字符 · ${aBytes} 字节`;
+    metaB.textContent = `${r.bytes.length} 字节${r.odd ? ' +1 悬空' : ''}${r.invalid ? ` · 忽略${r.invalid}` : ''}`;
+    counters.textContent = `A: ${chars} 字符 / ${aBytes} 字节UTF-8 · B: ${r.bytes.length} 字节`;
+  }
+
+  function fromAscii() {
+    const bytes = enc.encode(asciiEl.value);
+    hexEl.value = fmt(bytes);
+    updateMeta();
+    const extra = bytes.some(b => b > 127) ? ' · 含非ASCII字节(按UTF-8编码)' : '';
+    setText(`文本 → HEX · ${bytes.length} 字节${extra}`, 'ok');
+  }
+
+  function fromHex() {
+    const r = parseHex(hexEl.value);
+    if (r.empty && hexEl.value.trim() === '') {
+      asciiEl.value = '';
+      updateMeta();
+      setText('就绪 · 双向实时转换', 'ok');
+      return;
+    }
+    if (r.odd) { updateMeta(); setText('HEX 位数不足(奇数)，等待完整字节…', 'warn'); return; }
+    asciiEl.value = dec.decode(r.bytes);
+    updateMeta();
+    if (r.invalid > 0) { setText(`HEX → 文本 · 已忽略 ${r.invalid} 个非法字符`, 'warn'); return; }
+    let bad = false;
+    try { decStrict.decode(r.bytes); } catch (e) { bad = true; }
+    setText(bad ? 'HEX → 文本 · 含非UTF-8序列，无效处已用替换符显示' : `HEX → 文本 · ${r.bytes.length} 字节`, bad ? 'warn' : 'ok');
+  }
+
+  /* ── 事件 ── */
+  asciiEl.addEventListener('input', fromAscii);
+  hexEl.addEventListener('input', fromHex);
+
+  $('#sep').addEventListener('change', e => {
+    sepChar = SEP_MAP[e.target.value];
+    if (hexEl.value.trim()) hexEl.value = fmt(enc.encode(asciiEl.value));
+    setText(`分隔符已切换：${sepChar === '\n' ? '换行' : sepChar === '' ? '无' : '「' + sepChar + '」'}`, 'ok');
+  });
+  $('#caseSel').addEventListener('change', e => {
+    upper = e.target.value === 'upper';
+    if (hexEl.value.trim()) hexEl.value = fmt(enc.encode(asciiEl.value));
+    setText(`十六进制字形：${upper ? '大写' : '小写'}`, 'ok');
+  });
+
+  $('#swapBtn').addEventListener('click', () => {
+    const t = asciiEl.value;
+    asciiEl.value = hexEl.value;
+    hexEl.value = t;
+    updateMeta();
+    setText('已交换两侧内容', 'ok');
+  });
+
+  async function copyText(text, label) {
+    if (!text) { setText(`${label}内容为空`, 'warn'); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const t = document.createElement('textarea');
+      t.value = text;
+      t.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand('copy');
+      t.remove();
+    }
+    setText(`已复制${label}`, 'ok');
+  }
+  $('#copyA').addEventListener('click', () => copyText(asciiEl.value, '文本'));
+  $('#copyB').addEventListener('click', () => copyText(hexEl.value, 'HEX'));
+
+  $('#clearA').addEventListener('click', () => { asciiEl.value = ''; fromAscii(); });
+  $('#clearB').addEventListener('click', () => { hexEl.value = ''; fromHex(); });
+
+  /* ── 文件导入 ── */
+  async function importFile(file) {
+    const buf = await file.arrayBuffer();
+    let bytes = new Uint8Array(buf), note = '';
+    if (bytes.length > MAX_BYTES) { bytes = bytes.slice(0, MAX_BYTES); note = ` · 大文件仅载入前 ${MAX_BYTES / 1024}KB`; }
+    hexEl.value = fmt(bytes);
+    asciiEl.value = dec.decode(bytes);
+    updateMeta();
+    setText(`已导入「${file.name}」${bytes.length} 字节${note}`, 'ok');
+  }
+  async function importHexFile(file) {
+    hexEl.value = await file.text();
+    fromHex();
+    setText(`已导入HEX文本「${file.name}」· ${msg.textContent}`, msg.className);
+  }
+
+  $('#impText').addEventListener('click', () => $('#fileA').click());
+  $('#impHex').addEventListener('click', () => $('#fileH').click());
+  $('#fileA').addEventListener('change', e => { const f = e.target.files[0]; if (f) importFile(f); e.target.value = ''; });
+  $('#fileH').addEventListener('change', e => { const f = e.target.files[0]; if (f) importHexFile(f); e.target.value = ''; });
+
+  for (const [panel, handler] of [[$('#panelA'), importFile], [$('#panelB'), importHexFile]]) {
+    panel.addEventListener('dragover', e => { e.preventDefault(); panel.classList.add('drag'); });
+    panel.addEventListener('dragleave', () => panel.classList.remove('drag'));
+    panel.addEventListener('drop', e => {
+      e.preventDefault();
+      panel.classList.remove('drag');
+      const f = e.dataTransfer.files[0];
+      if (f) handler(f);
+    });
+  }
+
+  /* ── 文件导出 ── */
+  const sanitize = s => (s || '').replace(/[\\/:*?"<>|]+/g, '_').trim() || 'output';
+  const baseName = () => sanitize($('#fname').value);
+  function download(name, data, type) {
+    const blob = new Blob([data], { type });
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), { href: url, download: name });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+  $('#expTxt').addEventListener('click', () => {
+    if (!asciiEl.value) { setText('文本为空，无法导出', 'warn'); return; }
+    download(baseName() + '.txt', asciiEl.value, 'text/plain;charset=utf-8');
+    setText(`已导出 ${baseName()}.txt`, 'ok');
+  });
+  $('#expHex').addEventListener('click', () => {
+    if (!hexEl.value.trim()) { setText('HEX 为空，无法导出', 'warn'); return; }
+    download(baseName() + '.hex', hexEl.value, 'text/plain');
+    setText(`已导出 ${baseName()}.hex`, 'ok');
+  });
+  $('#expBin').addEventListener('click', () => {
+    const r = parseHex(hexEl.value);
+    if (r.empty) { setText('HEX 为空，无法导出二进制', 'warn'); return; }
+    if (r.odd) { setText('HEX 位数不足(奇数)，无法导出二进制', 'err'); return; }
+    download(baseName() + '.bin', r.bytes, 'application/octet-stream');
+    setText(`已导出 ${baseName()}.bin · ${r.bytes.length} 字节`, 'ok');
+  });
+
+  /* ── ASCII 速查表 ── */
+  const grid = $('#refGrid');
+  for (let c = 32; c <= 126; c++) {
+    const d = document.createElement('div');
+    d.className = 'cell';
+    const ch = c === 32 ? '␠' : String.fromCharCode(c);
+    d.innerHTML = `<span class="c"></span><span class="n">${c}</span>`;
+    d.querySelector('.c').textContent = ch;
+    grid.appendChild(d);
+  }
+
+  /* ── 初始化示例 ── */
+  asciiEl.value = 'Béton brut — 清水混凝土!';
+  fromAscii();
+})();
+</script>
+</body>
+</html>
